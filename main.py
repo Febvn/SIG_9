@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from routers import fasilitas
 from database import db
 from contextlib import asynccontextmanager
@@ -17,6 +18,16 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Root endpoint
 @app.get("/")

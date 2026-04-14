@@ -1,0 +1,62 @@
+Tampilan Swagger UI yang Anda kirimkan sudah sangat bagus dan lengkap. Itu membuktikan bahwa kode FastAPI Anda sudah berjalan dan memenuhi semua kriteria tugas.
+
+Berikut adalah draf Laporan Praktikum Pertemuan 7 yang bisa Anda gunakan. Anda tinggal menyalinnya ke Microsoft Word dan memasukkan screenshot yang sesuai.
+
+LAPORAN PRAKTIKUM SISTEM INFORMASI GEOGRAFIS
+PERTEMUAN 7: INTEGRASI FASTAPI DAN POSTGIS
+Nama: Febrian Valentino Nugroho
+NIM: 123140034
+Mata Kuliah: Sistem Informasi Geografis
+
+1. TUJUAN PRAKTIKUM
+Membangun REST API menggunakan framework FastAPI.
+Mengintegrasikan database PostGIS dengan aplikasi backend menggunakan library asyncpg.
+Mengimplementasikan operasi CRUD pada data spasial.
+Membuat output data dalam format standar GeoJSON.
+Melakukan query spasial (Radius/Nearby) melalui endpoint API.
+
+2. PERSIAPAN DAN INSTALASI
+Library yang digunakan dalam praktikum ini antara lain:
+FastAPI: Framework utama untuk pembuatan API.
+Uvicorn: Server ASGI untuk menjalankan FastAPI.
+Asyncpg: Driver database PostgreSQL yang mendukung operasi asynchronous.
+Pydantic: Digunakan untuk validasi skema data input.
+Python-dotenv: Untuk mengelola variabel lingkungan (koneksi database).
+
+3. IMPLEMENTASI KODE
+3.1 Skema Validasi (Pydantic)
+Sesuai ketentuan, digunakan model Pydantic untuk memvalidasi input saat melakukan penambahan data (POST).
+(Sertakan screenshot kode model FasilitasCreate)
+
+3.2 Endpoint API
+Telah berhasil diimplementasikan 5 endpoint utama:
+GET /fasilitas/: Mengambil seluruh daftar fasilitas publik.
+GET /fasilitas/{id}: Mengambil detail fasilitas berdasarkan ID unik.
+GET /fasilitas/geojson: Menghasilkan output data dalam format FeatureCollection GeoJSON agar dapat dikonsumsi oleh aplikasi frontend seperti Leaflet.
+POST /fasilitas/: Menambahkan titik fasilitas baru ke database menggunakan fungsi ST_Point dan ST_SetSRID.
+GET /fasilitas/nearby: Melakukan query spasial menggunakan fungsi ST_DWithin untuk mencari fasilitas dalam radius tertentu.
+
+4. HASIL DAN PENGUJIAN (DOKUMENTASI SWAGGER UI)
+Berikut adalah tampilan dokumentasi API otomatis yang dihasilkan oleh FastAPI (Swagger UI):
+[MASUKKAN SCREENSHOT SWAGGER UI ANDA DI SINI]
+(Pastikan screenshot memperlihatkan daftar endpoint: GET, POST, nearby, dan geojson seperti yang Anda kirimkan tadi).
+
+4.1 Pengujian Endpoint POST (Create)
+Input data dilakukan melalui body request JSON. Validasi Pydantic memastikan koordinat (longitude/latitude) berada dalam rentang yang benar.
+[MASUKKAN SCREENSHOT HASIL EXECUTE POST]
+
+4.2 Pengujian Endpoint Nearby (Spatial Query)
+Query dilakukan dengan memasukkan parameter lat, lon, dan radius. Database melakukan komputasi jarak menggunakan fungsi PostGIS untuk mengembalikan data terdekat.
+[MASUKKAN SCREENSHOT HASIL EXECUTE NEARBY]
+
+5. ANALISIS
+Integrasi Spasial: Penggunaan ST_AsGeoJSON pada database sangat memudahkan backend karena format data sudah siap digunakan oleh standar GIS tanpa perlu konversi manual di sisi aplikasi.
+Validasi Data: Pydantic mencegah terjadinya error pada database jika user memasukkan tipe data yang salah atau koordinat yang tidak masuk akal.
+Kinerja: Penggunaan asyncpg memungkinkan API menangani banyak permintaan secara bersamaan (concurrency) dengan performa yang lebih baik dibandingkan driver sinkron standar.
+
+6. KESIMPULAN
+Praktikum ini berhasil menunjukkan bahwa integrasi antara FastAPI dan PostGIS sangat efisien untuk membangun layanan WebGIS. Dengan minimal 5 endpoint yang telah diuji, sistem telah mampu melakukan operasi CRUD data spasial serta pencarian berbasis lokasi (Nearby) secara akurat.
+
+Tips Tambahan untuk Anda:
+Screenshot GeoJSON: Saat Anda mencoba (Try it out) endpoint /fasilitas/geojson, pastikan Anda mengambil screenshot bagian Response Body-nya yang memperlihatkan struktur {"type": "FeatureCollection", ...}. Dosen sangat menyukai ini karena itu bukti format GeoJSON Anda benar.
+Nearby: Saat tes nearby, gunakan koordinat yang dekat dengan data yang sudah ada di database Anda agar hasilnya tidak kosong (Status 200 tapi array kosong).

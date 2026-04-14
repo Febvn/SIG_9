@@ -11,13 +11,6 @@ async def get_all(pool=Depends(get_db)):
         rows = await conn.fetch("SELECT id, nama, jenis, alamat FROM fasilitas_publik")
         return [dict(r) for r in rows]
 
-@router.get("/{id}")
-async def get_by_id(id: int, pool=Depends(get_db)):
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT id, nama, jenis, alamat FROM fasilitas_publik WHERE id = $1", id)
-        if not row:
-            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
-        return dict(row)
 
 @router.get("/geojson", tags=["Spatial"])
 async def get_geojson(pool=Depends(get_db)):
@@ -64,3 +57,11 @@ async def get_nearby(lat: float, lon: float, radius: float = 1000, pool=Depends(
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, lon, lat, radius)
         return [dict(r) for r in rows]
+
+@router.get("/{id}")
+async def get_by_id(id: int, pool=Depends(get_db)):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT id, nama, jenis, alamat FROM fasilitas_publik WHERE id = $1", id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+        return dict(row)

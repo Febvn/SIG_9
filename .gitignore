@@ -1,7 +1,24 @@
+# Python
 __pycache__/
 *.pyc
 .env
 .venv
 env/
 venv/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
