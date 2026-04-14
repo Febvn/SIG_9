@@ -42,25 +42,25 @@ Menambahkan slider untuk radius dan menggunakan `useMapEvents` untuk menangkap k
 ### 4. HASIL PRAKTIKUM
 
 #### 4.1 Tampilan Dokumentasi Web-GIS
-![Main Interface](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/main.JPG)
+![Main Interface](./assets/main.JPG)
 *Keterangan: Tampilan utama aplikasi Web-GIS yang berjalan di localhost:3000.*
 
-![Localhost Interface](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/8_1%20localhost%203000.JPG)
+![Localhost Interface](./assets/8_1%20localhost%203000.JPG)
 
 #### 4.2 Hasil Uji Coba Deskriptif & Interaksi
-![Sidebar and Icons](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/side%20bar.JPG)
+![Sidebar and Icons](./assets/side%20bar.JPG)
 *Keterangan: Sidebar Neumorphic dengan grid statistik simetris.*
 
-![Marker and Popups](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/marker.JPG)
+![Marker and Popups](./assets/marker.JPG)
 *Keterangan: Menunjukkan feedback visual saat marker didekati dan informasi popup yang muncul saat diklik.*
 
-![Icon Details](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/icon.JPG)
+![Icon Details](./assets/icon.JPG)
 
 #### 4.3 Hasil Uji Coba Spasial (Nearby Search)
-![Nearby Search Circle](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/lingkaran.JPG)
+![Nearby Search Circle](./assets/lingkaran.JPG)
 *Keterangan: Lingkaran (Circle) berwarna indigo muncul pada titik klik menunjukkan area radius pencarian fasilitas terdekat.*
 
-![Radius Slider](file:///c:/Users/muham/OneDrive/Pictures/SIG_7/assets/slide.JPG)
+![Radius Slider](./assets/slide.JPG)
 
 ---
 
