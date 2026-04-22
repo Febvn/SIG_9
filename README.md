@@ -8,7 +8,7 @@
 
 ---
 
-## 📁 Submission Links
+## Submission Links
 - **GitHub Repository**: [https://github.com/Febvn/SIG_9](https://github.com/Febvn/SIG_9)
 - **Laporan PDF**: [Praktikum9_SIG_123140034.pdf](assets/Praktikum9_SIG_123140034.pdf)
 
@@ -68,7 +68,7 @@ Praktikum Pertemuan 9 berhasil mengintegrasikan aspek keamanan dan manajemen dat
 
 ---
 
-## 🚀 Cara Setup (GitHub Submission)
+## Cara Setup (GitHub Submission)
 1. **Clone & Install**:
    - Frontend: `cd frontend && npm install`
    - Backend: `pip install -r requirements.txt`
