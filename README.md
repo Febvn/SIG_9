@@ -8,6 +8,12 @@
 
 ---
 
+## 📁 Submission Links
+- **GitHub Repository**: [https://github.com/Febvn/SIG_9](https://github.com/Febvn/SIG_9)
+- **Laporan PDF**: [Praktikum9_SIG_123140034.pdf](assets/Praktikum9_SIG_123140034.pdf)
+
+---
+
 ## 1. TUJUAN PRAKTIKUM
 1. Membangun sistem keamanan pada WebGIS menggunakan protokol JSON Web Token (JWT).
 2. Mengimplementasikan siklus CRUD (Create, Read, Update, Delete) secara lengkap pada database PostGIS.
