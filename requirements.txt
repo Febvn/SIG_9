@@ -2,3 +2,7 @@ fastapi
 uvicorn
 asyncpg
 python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+email-validator
+python-multipart

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
+import styled from 'styled-components';
 import { 
   Map as MapIcon, 
   Search, 
@@ -52,15 +53,34 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   
-  // Nearby mode state
+  // Auth state
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState(!token ? 'login' : null); // Show login popup on startup if no token
+  const [authForm, setAuthForm] = useState({ username: '', password: '', email: '' });
+
+  // Mode state
   const [nearbyMode, setNearbyMode] = useState(false);
   const [addMode, setAddMode] = useState(false);
-  const [basemap, setBasemap] = useState('dark'); // dark, light, satellite
-  const [radius, setRadius] = useState(1000); // 1km default
+  const [editMode, setEditMode] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [basemap, setBasemap] = useState('dark'); 
+  const [radius, setRadius] = useState(1000); 
   const [nearbyResults, setNearbyResults] = useState([]);
-  const [searchPoint, setSearchPoint] = useState(null); // [lat, lon]
-  const [newPoint, setNewPoint] = useState(null); // For adding new facility
+  const [searchPoint, setSearchPoint] = useState(null); 
+  const [newPoint, setNewPoint] = useState(null); 
+  const [activeMarkerId, setActiveMarkerId] = useState(null);
   const [formData, setFormData] = useState({ nama: '', jenis: 'Masjid', alamat: '' });
+  const [notifications, setNotifications] = useState([]);
+
+  const showNotification = (message, type = 'info', title = null) => {
+    const id = Date.now();
+    const titles = { success: 'Success', error: 'Error', info: 'Info' };
+    setNotifications(prev => [...prev, { id, message, type, title: title || titles[type] }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  };
 
   const stats = useMemo(() => {
     if (!geoData) return {};
@@ -73,7 +93,29 @@ function App() {
 
   useEffect(() => {
     fetchData();
+    if (token) {
+      verifyToken();
+    }
   }, []);
+
+  const verifyToken = async (manualToken = null) => {
+    const targetToken = manualToken || token;
+    if (!targetToken) return;
+    
+    try {
+      const response = await axios.get(`${BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${targetToken}` }
+      });
+      setUser(response.data);
+    } catch (error) {
+      if (!manualToken) { // Only clear if it was an automatic check
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        showNotification("Session expired. Please login again.", "info", "Session");
+      }
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -81,7 +123,7 @@ function App() {
       const response = await axios.get(API_URL);
       setGeoData(response.data);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      showNotification("Failed to fetch map data", "error");
     } finally {
       setLoading(false);
     }
@@ -100,15 +142,58 @@ function App() {
         window.mapInstance.flyTo([lat, lon], 15);
       }
     } catch (error) {
-      console.error("Error fetching nearby data:", error);
+      showNotification("Failed to search nearby area", "error");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const params = new URLSearchParams();
+      params.append('username', authForm.username);
+      params.append('password', authForm.password);
+      
+      const response = await axios.post(`${BASE_URL}/auth/login`, params);
+      const { access_token } = response.data;
+      setToken(access_token);
+      localStorage.setItem('token', access_token);
+      await verifyToken(access_token); // Update user profile immediately
+      setAuthMode(null);
+      showNotification("Login berhasil!", "success");
+    } catch (error) {
+      showNotification(error.response?.data?.detail || "Cek username/password", "error", "Login Gagal");
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(`${BASE_URL}/auth/register`, authForm);
+      const { access_token } = response.data;
+      setToken(access_token);
+      localStorage.setItem('token', access_token);
+      await verifyToken(access_token); // Update user profile immediately
+      setAuthMode(null);
+      showNotification("Registrasi berhasil!", "success");
+    } catch (error) {
+      showNotification(error.response?.data?.detail || "Cek data Anda", "error", "Registrasi Gagal");
+    }
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    setUser(null);
+    setActiveMarkerId(null);
+    localStorage.removeItem('token');
+    showNotification("Berhasil logout!", "info");
+  };
+
   const handleCreateFacility = async (e) => {
     e.preventDefault();
-    if (!newPoint) return alert("Pilih lokasi di peta terlebih dahulu!");
+    if (!token) return setAuthMode('login');
+    if (!newPoint) return showNotification("Pilih lokasi di peta terlebih dahulu!", "error", "Lengkapi Data");
     
     try {
       setLoading(true);
@@ -116,15 +201,62 @@ function App() {
         ...formData,
         longitude: newPoint.lng,
         latitude: newPoint.lat
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Fasilitas berhasil ditambahkan!");
+      showNotification("Fasilitas berhasil ditambahkan!", "success");
       setAddMode(false);
       setNewPoint(null);
       setFormData({ nama: '', jenis: 'Masjid', alamat: '' });
-      fetchData(); // Refresh data
+      fetchData(); 
     } catch (error) {
-      console.error("Error creating facility:", error.response?.data?.detail || error.message);
-      alert("Gagal menambahkan fasilitas: " + (JSON.stringify(error.response?.data?.detail) || error.message));
+      showNotification(error.response?.data?.detail || error.message, "error", "Gagal Menambahkan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateFacility = async (e) => {
+    e.preventDefault();
+    if (!token) return setAuthMode('login');
+    
+    try {
+      setLoading(true);
+      const updateData = { ...formData };
+      if (newPoint) {
+        updateData.longitude = newPoint.lng;
+        updateData.latitude = newPoint.lat;
+      }
+      
+      await axios.put(`${BASE_URL}/fasilitas/${editingId}`, updateData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showNotification("Fasilitas berhasil diperbarui!", "success");
+      setEditMode(false);
+      setEditingId(null);
+      setNewPoint(null);
+      setFormData({ nama: '', jenis: 'Masjid', alamat: '' });
+      fetchData();
+    } catch (error) {
+      showNotification(error.response?.data?.detail || error.message, "error", "Gagal Memperbarui");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFacility = async (id) => {
+    if (!token) return setAuthMode('login');
+    if (!window.confirm("Yakin ingin menghapus fasilitas ini?")) return;
+    
+    try {
+      setLoading(true);
+      await axios.delete(`${BASE_URL}/fasilitas/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showNotification("Fasilitas berhasil dihapus!", "success");
+      fetchData();
+    } catch (error) {
+      showNotification(error.response?.data?.detail || error.message, "error", "Gagal Menghapus");
     } finally {
       setLoading(false);
     }
@@ -256,6 +388,32 @@ function App() {
   return (
     <div className="app-container">
       <aside className="sidebar">
+        <div className="auth-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}>
+          {token && user ? (
+            <div style={{display:'flex', alignItems:'center', gap:'10px', width: '100%', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.05)'}}>
+              <div style={{width:36, height:36, borderRadius:'50%', background:'white', color: 'black', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', fontWeight:800, boxShadow: '0 0 15px rgba(255,255,255,0.3)'}}>
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+              <div style={{flex: 1}}>
+                <div style={{fontSize: '0.85rem', fontWeight: 700, color: 'white'}}>Hi, {user.username}</div>
+                <div style={{fontSize: '0.65rem', color: 'var(--text-muted)'}}>{user.status === 'authenticated' ? 'Premium Member' : 'Guest'}</div>
+              </div>
+              <button onClick={handleLogout} style={{background:'rgba(255,255,255,0.1)', border:'none', color:'white', fontSize:'0.7rem', cursor:'pointer', padding:'6px 10px', borderRadius: '8px', fontWeight: 600}}>Logout</button>
+            </div>
+          ) : (
+            <div style={{display:'flex', gap:'8px', width: '100%'}}>
+              <button 
+                onClick={() => setAuthMode('login')} 
+                style={{flex: 1, background:'rgba(255,255,255,0.05)', border:'none', color:'white', padding:'10px', borderRadius:'14px', fontSize:'0.85rem', cursor:'pointer', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)'}}
+              >Login</button>
+              <button 
+                onClick={() => setAuthMode('register')} 
+                style={{flex: 1, background:'white', border:'none', color:'black', padding:'10px', borderRadius:'14px', fontSize:'0.85rem', cursor:'pointer', fontWeight:700, boxShadow: '0 4px 15px rgba(255,255,255,0.2)'}}
+              >Sign Up</button>
+            </div>
+          )}
+        </div>
+
         <div style={{marginBottom: '4px'}}>
           <h1 style={{letterSpacing: '-0.04em'}}>Public <span style={{fontWeight: 400, opacity: 0.6}}>Map</span></h1>
           <p className="subtitle">Visualisasi Fasilitas Publik Kota Bandar Lampung</p>
@@ -315,6 +473,7 @@ function App() {
             onClick={() => {
               setNearbyMode(!nearbyMode);
               setAddMode(false);
+              setEditMode(false);
               if (!nearbyMode) {
                 setNearbyResults([]);
                 setSearchPoint(null);
@@ -331,7 +490,9 @@ function App() {
             onClick={() => {
               setAddMode(!addMode);
               setNearbyMode(false);
+              setEditMode(false);
               setNewPoint(null);
+              setFormData({ nama: '', jenis: 'Masjid', alamat: '' });
             }}
           >
             {addMode ? <X size={18} /> : <PlusCircle size={18} />}
@@ -357,32 +518,110 @@ function App() {
           </div>
         )}
 
-        {addMode && (
-          <form onSubmit={handleCreateFacility} className="glass-card" style={{display:'flex', flexDirection:'column', gap:'14px'}}>
+        {(addMode || editMode) && (
+          <form onSubmit={editMode ? handleUpdateFacility : handleCreateFacility} className="glass-card" style={{display:'flex', flexDirection:'column', gap:'14px'}}>
              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                <h4 style={{fontSize:'0.75rem', fontWeight:700, opacity:0.4, letterSpacing: '0.05em'}}>NEW FACILITY</h4>
-                {newPoint && <div style={{width:8, height:8, borderRadius:'50%', background:'#10b981', boxShadow: '0 0 10px #10b981'}}></div>}
+                <h4 style={{fontSize:'0.75rem', fontWeight:700, opacity:0.4, letterSpacing: '0.05em'}}>{editMode ? 'EDIT FACILITY' : 'NEW FACILITY'}</h4>
+                {(newPoint || editMode) && <div style={{width:8, height:8, borderRadius:'50%', background:'#10b981', boxShadow: '0 0 10px #10b981'}}></div>}
              </div>
              
-             {!newPoint ? (
+             {!newPoint && !editMode ? (
                <div style={{fontSize:'0.75rem', padding:'12px', background:'rgba(255, 255, 255, 0.03)', color:'var(--text-muted)', borderRadius:'14px', border:'1px dashed rgba(255,255,255,0.1)', textAlign: 'center'}}>
                  Tap on map to set location
                </div>
-             ) : (
+             ) : newPoint ? (
                <div style={{fontSize:'0.7rem', color:'white', fontWeight:600, textAlign: 'center', background: 'rgba(255,255,255,0.05)', padding: '8px', borderRadius: '10px'}}>
                  📍 {newPoint.lat.toFixed(5)}, {newPoint.lng.toFixed(5)}
                </div>
-             )}
+             ) : null}
              
-             <input placeholder="Name" className="search-bar" required value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})}/>
+             <input placeholder="Name" className="search-bar" required minLength={3} value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})}/>
              <select className="search-bar" value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})}>
                {Object.keys(CATEGORIES).filter(c => c !== 'Default').map(c => (
                  <option key={c} value={c}>{c}</option>
                ))}
              </select>
-             <textarea placeholder="Address" className="search-bar" style={{minHeight:'70px', borderRadius:'14px'}} value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})}/>
-             <button type="submit" className="nearby-btn active" style={{width:'100%', background: 'white', color: 'black'}}>Create</button>
+             <textarea placeholder="Address (Min 5 chars)" className="search-bar" style={{minHeight:'70px', borderRadius:'14px'}} minLength={5} value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})}/>
+             <div style={{display:'flex', gap:'10px'}}>
+                <button type="submit" className="nearby-btn active" style={{flex:2, background: 'white', color: 'black'}}>{editMode ? 'Update' : 'Create'}</button>
+                {editMode && (
+                  <button type="button" onClick={() => {setEditMode(false); setEditingId(null); setNewPoint(null);}} className="nearby-btn" style={{flex:1}}><X size={18}/></button>
+                )}
+             </div>
           </form>
+        )}
+
+        {authMode && (
+          <div className="auth-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(12px)'}}>
+            <StyledAuthWrapper>
+              <form className="form" onSubmit={authMode === 'login' ? handleLogin : handleRegister}>
+                <p id="heading">{authMode === 'login' ? 'Login' : 'Registration'}</p>
+                <div className="field">
+                  <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M13.106 7.222c0-2.967-2.249-5.032-5.482-5.032-3.35 0-5.646 2.318-5.646 5.702 0 3.493 2.235 5.708 5.762 5.708.862 0 1.689-.123 2.304-.335v-.862c-.43.199-1.354.328-2.29.328-2.926 0-4.813-1.88-4.813-4.798 0-2.844 1.921-4.881 4.594-4.881 2.735 0 4.608 1.688 4.608 4.156 0 1.682-.554 2.769-1.416 2.769-.492 0-.772-.28-.772-.76V5.206H8.923v.834h-.11c-.266-.595-.881-.964-1.6-.964-1.4 0-2.378 1.162-2.378 2.823 0 1.737.957 2.906 2.379 2.906.8 0 1.415-.39 1.709-1.087h.11c.081.67.703 1.148 1.503 1.148 1.572 0 2.57-1.415 2.57-3.643zm-7.177.704c0-1.197.54-1.907 1.456-1.907.93 0 1.524.738 1.524 1.907S8.308 9.84 7.371 9.84c-.895 0-1.442-.725-1.442-1.914z" />
+                  </svg>
+                  <input 
+                    autoComplete="off" 
+                    placeholder="Username" 
+                    className="input-field" 
+                    type="text" 
+                    required 
+                    minLength={3}
+                    value={authForm.username}
+                    onChange={e => setAuthForm({...authForm, username: e.target.value})}
+                  />
+                </div>
+
+                {authMode === 'register' && (
+                  <div className="field">
+                    <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
+                    </svg>
+                    <input 
+                      placeholder="Email" 
+                      className="input-field" 
+                      type="email" 
+                      required 
+                      value={authForm.email}
+                      onChange={e => setAuthForm({...authForm, email: e.target.value})}
+                    />
+                  </div>
+                )}
+
+                <div className="field">
+                  <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+                  </svg>
+                  <input 
+                    placeholder="Password" 
+                    className="input-field" 
+                    type="password" 
+                    required 
+                    minLength={6}
+                    value={authForm.password}
+                    onChange={e => setAuthForm({...authForm, password: e.target.value})}
+                  />
+                </div>
+
+                <div className="btn">
+                  <button type="submit" className="button1">
+                    {authMode === 'login' ? 'Login' : 'Register'}
+                  </button>
+                  <button 
+                    type="button" 
+                    className="button2" 
+                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                  >
+                    {authMode === 'login' ? 'Sign Up' : 'To Login'}
+                  </button>
+                </div>
+                
+                <button type="button" className="button3" onClick={() => setAuthMode(null)}>
+                  Continue as Guest
+                </button>
+              </form>
+            </StyledAuthWrapper>
+          </div>
         )}
 
         <div className="facility-list">
@@ -411,24 +650,23 @@ function App() {
                     jenis: f.jenis,
                     alamat: f.alamat,
                     jarak: f.jarak,
-                    coords: null,
+                    coords: [f.longitude, f.latitude],
                   };
 
               return (
                 <div
                   key={i}
-                  className="facility-item"
-                  style={{ cursor: 'pointer' }}
+                  className={`facility-item ${activeMarkerId === item.id ? 'active' : ''}`}
+                  style={{ 
+                    cursor: 'pointer',
+                    background: activeMarkerId === item.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    borderLeft: activeMarkerId === item.id ? `4px solid ${ (CATEGORIES[item.jenis] || CATEGORIES.Default).color }` : '4px solid transparent'
+                  }}
                   onClick={() => {
-                    if (item.coords) {
+                    setActiveMarkerId(item.id);
+                    if (item.coords && item.coords[0] !== undefined) {
                       const [lon, lat] = item.coords;
                       window.mapInstance.flyTo([lat, lon], 17, { animate: true, duration: 1.5 });
-                    } else {
-                      const fullFeature = geoData.features.find((feat) => feat.id === item.id);
-                      if (fullFeature) {
-                        const [lon, lat] = fullFeature.geometry.coordinates;
-                        window.mapInstance.flyTo([lat, lon], 17, { animate: true, duration: 1.5 });
-                      }
                     }
                   }}
                 >
@@ -481,14 +719,75 @@ function App() {
               "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             }
           />
-          {geoData && (
-            <GeoJSON 
-              ref={geoJsonRef}
-              data={geoData} 
-              pointToLayer={pointToLayer}
-              onEachFeature={onEachFeature}
-            />
-          )}
+          {filteredFeatures.map((f, i) => {
+            const [lon, lat] = f.geometry.coordinates;
+            const category = CATEGORIES[f.properties.jenis] || CATEGORIES.Default;
+            const isActive = activeMarkerId === f.id;
+            
+            return (
+              <Marker 
+                key={f.id || i} 
+                position={[lat, lon]}
+                icon={L.divIcon({
+                  className: 'custom-div-icon',
+                  html: `
+                    <div class="custom-marker ${isActive ? 'active-highlight' : ''}" style="background-color: ${category.color}; border: 2px solid white; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transform: ${isActive ? 'scale(1.4)' : 'scale(1)'}; transition: all 0.3s ease;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        ${getIconSvg(f.properties.jenis)}
+                      </svg>
+                    </div>
+                  `,
+                  iconSize: [34, 34],
+                  iconAnchor: [17, 17]
+                })}
+                eventHandlers={{
+                  click: () => setActiveMarkerId(f.id)
+                }}
+              >
+                <Popup maxWidth={300} minWidth={250}>
+                  <div className="popup-container" style={{overflow: 'hidden', borderRadius: '12px'}}>
+                    <div className="popup-header" style={{background: category.color, color: 'white', padding: '15px'}}>
+                      <h3 style={{margin:0, fontSize: '1.1rem'}}>{f.properties.nama}</h3>
+                      <span style={{fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9}}>{f.properties.jenis}</span>
+                    </div>
+                    <div className="popup-body" style={{padding: '15px', background: '#0f172a', color: '#cbd5e1'}}>
+                      <div style={{display:'flex', alignItems:'flex-start', gap:'10px', marginBottom:'12px'}}>
+                        <MapPin size={16} style={{flexShrink:0, marginTop:3}} />
+                        <span style={{fontSize: '0.9rem', lineHeight: 1.4}}>{f.properties.alamat}</span>
+                      </div>
+                      
+                      {token && (
+                        <div style={{display: 'flex', gap: '8px', marginTop: '15px'}}>
+                          <button 
+                            onClick={() => {
+                              setEditMode(true);
+                              setAddMode(false);
+                              setEditingId(f.id);
+                              setFormData({
+                                nama: f.properties.nama,
+                                jenis: f.properties.jenis,
+                                alamat: f.properties.alamat
+                              });
+                              setNewPoint({ lat, lng: lon });
+                            }}
+                            style={{flex: 1, background: '#3b82f6', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'}}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteFacility(f.id)}
+                            style={{flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem'}}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
           <div className="map-controls">
                 <button 
                   className={`control-btn ${basemap === 'dark' ? 'active' : ''}`}
@@ -549,8 +848,30 @@ function App() {
                <Popup>Lokasi Fasilitas Baru</Popup>
             </Marker>
           )}
+
+          <MapController />
+          <MapClickHandler 
+            nearbyMode={nearbyMode} 
+            addMode={addMode} 
+            onMapClick={handleNearbySearch} 
+            onAddPoint={setNewPoint} 
+          />
         </MapContainer>
       </main>
+
+      <div className="notification-container">
+        {notifications.map(n => (
+          <div key={n.id} className={`notification-toast ${n.type}`}>
+            <div className="notification-content">
+              <div className="notification-title">{n.title}</div>
+              <div className="notification-message">{n.message}</div>
+            </div>
+            <button className="notification-close" onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}>
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -577,5 +898,121 @@ function MapClickHandler({ isEnabled, nearbyMode, addMode, onMapClick, onAddPoin
   });
   return null;
 }
+const StyledAuthWrapper = styled.div`
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-left: 2em;
+    padding-right: 2em;
+    padding-bottom: 0.4em;
+    background-color: #171717;
+    border-radius: 25px;
+    transition: .4s ease-in-out;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .form:hover {
+    transform: scale(1.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  #heading {
+    text-align: center;
+    margin: 2em;
+    color: rgb(255, 255, 255);
+    font-size: 1.5em;
+    font-weight: 700;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    border-radius: 25px;
+    padding: 0.6em;
+    border: none;
+    outline: none;
+    color: white;
+    background-color: #171717;
+    box-shadow: inset 2px 5px 10px rgb(5, 5, 5);
+  }
+
+  .input-icon {
+    height: 1.3em;
+    width: 1.3em;
+    fill: white;
+  }
+
+  .input-field {
+    background: none;
+    border: none;
+    outline: none;
+    width: 100%;
+    color: #d3d3d3;
+    padding: 5px;
+  }
+
+  .form .btn {
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    margin-top: 2.5em;
+    gap: 10px;
+  }
+
+  .button1 {
+    padding: 0.6em 1.2em;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    background-color: white;
+    color: black;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .button1:hover {
+    background-color: #d1d1d1;
+    transform: translateY(-2px);
+  }
+
+  .button2 {
+    padding: 0.6em 1.2em;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    outline: none;
+    transition: .4s ease-in-out;
+    background-color: #252525;
+    color: white;
+    cursor: pointer;
+  }
+
+  .button2:hover {
+    background-color: #333;
+    transform: translateY(-2px);
+  }
+
+  .button3 {
+    margin-top: 1em;
+    margin-bottom: 2em;
+    padding: 0.5em;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+
+  .button3:hover {
+    color: white;
+  }
+`;
 
 export default App;

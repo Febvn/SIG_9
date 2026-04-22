@@ -4,7 +4,7 @@ import os
 class MY_PDF(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 12)
-        self.cell(0, 10, 'LAPORAN PRAKTIKUM SIG - Pertemuan 8', 0, 1, 'C')
+        self.cell(0, 10, 'LAPORAN PRAKTIKUM SIG - Pertemuan 9', 0, 1, 'C')
         self.ln(5)
 
     def footer(self):
@@ -27,6 +27,6 @@ def create_pdf(text_file, output_pdf):
     print(f"PDF created: {output_pdf}")
 
 if __name__ == "__main__":
-    txt_path = r"c:\Users\muham\OneDrive\Pictures\SIG_7\Laporan_Praktikum8_Frontend.txt"
-    pdf_path = r"c:\Users\muham\OneDrive\Pictures\SIG_7\Laporan_Praktikum8_Frontend.pdf"
+    txt_path = r"c:\Users\muham\OneDrive\Pictures\SIG_7\Laporan_Praktikum9_WebGIS.txt"
+    pdf_path = r"c:\Users\muham\OneDrive\Pictures\SIG_7\Laporan_Praktikum9_WebGIS.pdf"
     create_pdf(txt_path, pdf_path)

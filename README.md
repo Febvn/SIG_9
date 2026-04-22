@@ -1,73 +1,75 @@
-# LAPORAN PRAKTIKUM SISTEM INFORMASI GEOGRAFIS
-## PERTEMUAN 8: MEMBANGUN APLIKASI WEB-GIS FRONTEND DENGAN REACT DAN LEAFLET
+# WebGIS Fasilitas Publik - Tugas Praktikum 9
 
-**Nama:** Febrian Valentino Nugroho  
-**NIM:** 123140034  
-**Mata Kuliah:** Praktikum SIG
+## PERTEMUAN 9: PENGEMBANGAN FULL-STACK WEBGIS DENGAN AUTENTIKASI JWT DAN MANAJEMEN CRUD SPASIAL
 
----
-
-### 1. TUJUAN PRAKTIKUM
-1. Memahami konsep integrasi antara REST API Spasial (FastAPI + PostGIS) dengan aplikasi Frontend.
-2. Membangun antarmuka peta interaktif menggunakan library Leaflet dan React-Leaflet.
-3. Mengimplementasikan visualisasi data GeoJSON dengan kategorisasi simbol (styling kustom).
-4. Membangun fitur interaksi spasial kompleks seperti Nearby Search (pencarian radius) dan Map Center handling.
-5. Mengimplementasikan fitur manajemen data (Create) secara visual menggunakan interaksi klik pada peta.
-6. Menerapkan desain antarmuka modern (Neumorphism & iOS-Style) untuk meningkatkan aspek usability aplikasi.
-
-### 2. PERALATAN DAN BAHAN (TECH STACK)
-- **React.js:** Framework JavaScript untuk membangun antarmuka web yang reaktif.
-- **Vite:** Build tool modern untuk pengembangan aplikasi React yang cepat.
-- **Leaflet.js:** Library open-source utama untuk integrasi peta interaktif.
-- **React-Leaflet:** Wrapper React untuk Leaflet guna mempermudah manajemen state peta.
-- **Axios:** Library untuk menangani permintaan HTTP asinkron ke backend API.
-- **Lucide-React:** Library ikon untuk elemen antarmuka.
-- **CSS Vanilla:** Digunakan untuk kustomisasi desain Neumorphism dan Glassmorphism.
-
-### 3. LANGKAH-LANGKAH IMPLEMENTASI
-#### 3.1 Inisialisasi Project & Konfigurasi API
-Melakukan setup project React menggunakan Vite dan mengatur konfigurasi `constants.js` untuk menghubungkan frontend ke BASE_URL backend FastAPI (`http://localhost:8000`).
-
-#### 3.2 Pengembangan Antarmuka (UI/UX)
-Membangun sidebar melayang (Floating Sidebar) dengan Mengimplementasikan Grid Statistik untuk menampilkan jumlah data tiap kategori secara real-time dan menambahkan Basemap Switcher (Dark, Street, Satellite).
-
-#### 3.3 Integrasi Data Spasial & Interaction
-Menggunakan hook `useEffect` untuk melakukan fetch data GeoJSON. Implementasi fungsi `pointToLayer` untuk memberikan ikon dan warna berbeda berdasarkan kategori (Masjid, Sekolah, Puskesmas, dll) serta efek 'Pulse/Ping' pada marker via CSS Animation.
-
-#### 3.4 Implementasi Fitur Nearby & Tambah Data
-Menambahkan slider untuk radius dan menggunakan `useMapEvents` untuk menangkap koordinat klik pada peta guna mengirim data ke endpoint `/nearby` atau mengisi form "Tambah Data" secara otomatis.
+**Nama**: Febrian Valentino Nugroho  
+**NIM**: 123140034  
+**Mata Kuliah**: Praktikum SIG
 
 ---
 
-### 4. HASIL PRAKTIKUM
+## 1. TUJUAN PRAKTIKUM
+1. Membangun sistem keamanan pada WebGIS menggunakan protokol JSON Web Token (JWT).
+2. Mengimplementasikan siklus CRUD (Create, Read, Update, Delete) secara lengkap pada database PostGIS.
+3. Mengintegrasikan interaksi peta (Leaflet) dengan form manajemen data (React) secara reaktif.
+4. Menerapkan validasi data tingkat lanjut menggunakan Pydantic di sisi backend dan Constraint Validation di sisi frontend.
+5. Memahami konsep Protected Routes untuk membatasi akses fitur administratif hanya kepada pengguna terautentikasi.
 
-#### 4.1 Tampilan Dokumentasi Web-GIS
-![Main Interface](./assets/main.JPG)
-*Keterangan: Tampilan utama aplikasi Web-GIS yang berjalan di localhost:3000.*
+## 2. ARSITEKTUR SISTEM & TECH STACK
+- **Backend**: FastAPI (Python) dengan library JOSE untuk JWT dan Passlib untuk hashing password.
+- **Database**: PostGIS (PostgreSQL) untuk penyimpanan data tabular dan geometri.
+- **Frontend**: React.js dengan Vite, Leaflet sebagai mesin peta, dan Axios untuk komunikasi API.
+- **Keamanan**: Implementasi Bearer Token Authentication dan enkripsi Bcrypt pada penyimpanan kredensial.
 
-![Localhost Interface](./assets/8_1%20localhost%203000.JPG)
+## 3. LANGKAH-LANGKAH IMPLEMENTASI
+### 3.1 Implementasi Autentikasi (JWT)
+Backend menyediakan dua endpoint utama: `/auth/register` dan `/auth/login`. Saat login berhasil, server mengirimkan access token yang akan disimpan di localStorage frontend. Token ini kemudian dilampirkan pada header Authorization setiap kali pengguna melakukan operasi tambah, edit, atau hapus data.
 
-#### 4.2 Hasil Uji Coba Deskriptif & Interaksi
-![Sidebar and Icons](./assets/side%20bar.JPG)
-*Keterangan: Sidebar Neumorphic dengan grid statistik simetris.*
+### 3.2 Manajemen CRUD & Interaksi Spasial
+- **Create**: Penambahan data fasilitas dilakukan melalui klik pada peta untuk mendapatkan koordinat otomatis (Map-to-Form Sync).
+- **Read**: Data ditarik dalam format GeoJSON menggunakan query `ST_AsGeoJSON` yang dioptimalkan.
+- **Update**: Fitur Live Editing yang memungkinkan pengguna mengubah informasi atau menggeser lokasi fasilitas melalui popup marker.
+- **Delete**: Penghapusan data secara seamless yang memicu state update pada peta tanpa perlu memuat ulang halaman (Single Page Application behavior).
 
-![Marker and Popups](./assets/marker.JPG)
-*Keterangan: Menunjukkan feedback visual saat marker didekati dan informasi popup yang muncul saat diklik.*
-
-![Icon Details](./assets/icon.JPG)
-
-#### 4.3 Hasil Uji Coba Spasial (Nearby Search)
-![Nearby Search Circle](./assets/lingkaran.JPG)
-*Keterangan: Lingkaran (Circle) berwarna indigo muncul pada titik klik menunjukkan area radius pencarian fasilitas terdekat.*
-
-![Radius Slider](./assets/slide.JPG)
+### 3.3 Optimasi Query & UI/UX
+Penggunaan Casting `::geography` pada query radius (`ST_DWithin`) untuk memastikan akurasi jarak dalam satuan meter. Sisi UI dipoles menggunakan desain Neumorphism dan Glassmorphism dengan sistem notifikasi toast kustom.
 
 ---
 
-### 5. ANALISIS
-1. **Integrasi Client-Server:** Penggunaan format GeoJSON sangat efisien karena format ini didukung secara native oleh Leaflet, memungkinkan manipulasi data di sisi client (filtering kategori) berjalan sangat cepat tanpa beban server berlebih.
-2. **User Experience (UX):** Fitur seperti animasi pulse dan transisi flyTo sangat membantu orientasi pengguna. Desain Neumorphism memberikan kesan modern dan bersih sehingga informasi spasial menjadi fokus utama.
-3. **Visual Hierarchy:** Pembagian statistik ke dalam grid simetris memudahkan pengguna memahami distribusi fasilitas tanpa harus membaca tabel data yang panjang.
+## 4. HASIL DAN PENGUJIAN (DOKUMENTASI)
 
-### 6. KESIMPULAN
-Praktikum Pertemuan 8 berhasil membuktikan bahwa integrasi antara Backend Spasial (FastAPI/PostGIS) dan Frontend (React/Leaflet) dapat menghasilkan aplikasi Web-GIS yang fungsional dan profesional. Seluruh kriteria tugas, mulai dari visualisasi GeoJSON hingga fitur interaksi spasial kompleks, telah berhasil diimplementasikan dengan baik.
+### 4.1 Antarmuka Autentikasi (Login & Register)
+![Login Screen](assets/login.JPG)
+![Sign Up Screen](assets/sign%20up.JPG)
+
+### 4.2 Manajemen Data pada Marker (Edit & Delete)
+![Marker Management](assets/market_delete_edit.JPG)
+*Keterangan: Bukti implementasi CRUD lengkap yang dapat diakses langsung melalui interaksi pada peta.*
+
+### 4.3 Form Edit dengan Validasi Frontend
+![Edit Form](assets/Form%20Edit%20dengan%20Validasi%20Frontend.JPG)
+*Keterangan: Form yang menampilkan koordinat otomatis hasil klik peta serta validasi input Pydantic.*
+
+---
+
+## 5. ANALISIS
+1. **Keamanan Berlapis**: Dengan JWT, operasi modifikasi data terlindungi dari akses ilegal. Enkripsi password dengan Bcrypt memastikan privasi pengguna terjaga di level database.
+2. **Efisiensi Alur Kerja**: Sinkronisasi antara peta dan form (Map-Form Sync) sangat mengurangi risiko kesalahan input koordinat manual oleh pengguna.
+3. **Skalabilitas**: Pemisahan antara backend (FastAPI) dan frontend (React) memungkinkan aplikasi ini dikembangkan lebih lanjut menjadi platform kolaboratif berskala luas.
+
+## 6. KESIMPULAN
+Praktikum Pertemuan 9 berhasil mengintegrasikan aspek keamanan dan manajemen data yang kompleks ke dalam sebuah ekosistem WebGIS. Seluruh ketentuan tugas, mulai dari sistem login JWT hingga fitur CRUD spasial yang interaktif, telah berhasil diimplementasikan dan diuji dengan baik.
+
+---
+
+## 🚀 Cara Setup (GitHub Submission)
+1. **Clone & Install**:
+   - Frontend: `cd frontend && npm install`
+   - Backend: `pip install -r requirements.txt`
+2. **Environment**:
+   Buat file `.env` berisi `DATABASE_URL` dan `SECRET_KEY`.
+3. **Database**:
+   Pastikan ekstensi PostGIS aktif dan jalankan `python init_db.py`.
+4. **Running**:
+   - Backend: `uvicorn main:app --reload`
+   - Frontend: `npm run dev`
